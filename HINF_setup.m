@@ -388,14 +388,14 @@ disp(dcgain(G_scaled));
 % Tuning definitivo:
 % - Ms moderatamente aumentato rispetto alla prima specifica;
 % - banda richiesta leggermente ridotta;
-% - WU = 0.90 I per utilizzare parte del margine sul comando.
+% - WU = 0.75 I per utilizzare parte del margine sul comando.
 % Il compromesso porta gamma H-infinity sotto 1 mantenendo i requisiti
 % temporali nominali e una buona stabilita' robusta.
 % ========================================================================
-weight.Ms_alpha = 1.45;
-weight.Ms_beta  = 1.50;
-weight.As_alpha = 0.015;
-weight.As_beta  = 0.015;
+weight.Ms_alpha = 1.85;
+weight.Ms_beta  = 1.90;
+weight.As_alpha = 0.021;
+weight.As_beta  = 0.021;
 weight.wb_alpha = 3.8;
 weight.wb_beta  = 3.0;
 WS_alpha = ...
@@ -415,7 +415,7 @@ WU = ss( ...
     [], ...
     [], ...
     [], ...
-    0.90*eye(2));
+    0.70*eye(2));
 
 %% ========================================================================
 % 12. PESO WT
