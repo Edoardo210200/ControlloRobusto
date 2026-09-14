@@ -320,6 +320,9 @@ for k = 1:Nc
         max(muRPup);
     MuRP_Lower(k) = ...
         max(muRPlo);
+    % Certificazione RP basata sulla mu esplicita.
+    RP(k) = ...
+        MuRP_Upper(k) < 1;
 
     %% ====================================================================
     % FINE CONTROLLER
