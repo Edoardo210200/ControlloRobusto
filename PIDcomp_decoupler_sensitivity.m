@@ -27,7 +27,6 @@ load('LQG_2DOF_Controllers.mat');
 load('HINF_setup.mat');
 load('HINF_controllers.mat');
 load('MU_controller.mat');
-load('H2_controller.mat');
 
 % Il modello compila anche il ramo LQG.
 if ~exist('Aobs','var') || ~exist('Bobs','var') || ...

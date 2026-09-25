@@ -4,7 +4,6 @@
 % entro le tolleranze di stato durante la coda finale della simulazione.
 % La mappa e' quindi una stima numerica conservativa della regione di
 % attrazione, dipendente da tFinal e dalle tolleranze dichiarate.
-%
 
 %% RAS_VECTORIZED_FINAL_V5
 % =========================================================================
@@ -54,7 +53,7 @@ cfg.controllerNames = { ...
     'hinfsyn', ...
     'PID+comp', ...
     'mu-synthesis', ...
-    'H2'};
+    'H2-soft'};
 
 %% ========================================================================
 % 1. INIZIALIZZAZIONE DEL PROGETTO
@@ -633,6 +632,7 @@ disp('RAS FINAL V5 completata.');
 % FUNZIONI LOCALI
 % ========================================================================
 function controllers = loadControllers(requestedNames)
+
     controllers = struct( ...
         'name',{}, ...
         'family',{}, ...
@@ -640,55 +640,155 @@ function controllers = loadControllers(requestedNames)
         'B',{}, ...
         'C',{}, ...
         'D',{});
+
+    %% ====================================================================
+    % LQG / LQGI
+    % =====================================================================
+
     if isfile('LQG_2DOF_Controllers.mat')
-        SL = load('LQG_2DOF_Controllers.mat');
+
+        SL = ...
+            load('LQG_2DOF_Controllers.mat');
+
     else
+
         SL = struct;
+
     end
+
     if ismember('LQG',requestedNames)
-        controllers(end+1) = makeController( ...
-            'LQG','LQG',fetchSystem('K_LQG',SL)); %#ok<AGROW>
+
+        controllers(end+1) = ...
+            makeController( ...
+                'LQG', ...
+                'LQG', ...
+                fetchSystem('K_LQG',SL)); %#ok<AGROW>
+
     end
+
     if ismember('LQGI',requestedNames)
-        controllers(end+1) = makeController( ...
-            'LQGI','LQG',fetchSystem('K_LQGI',SL)); %#ok<AGROW>
+
+        controllers(end+1) = ...
+            makeController( ...
+                'LQGI', ...
+                'LQG', ...
+                fetchSystem('K_LQGI',SL)); %#ok<AGROW>
+
     end
+
+    %% ====================================================================
+    % H-INFINITY
+    % =====================================================================
+
     if isfile('HINF_controllers.mat')
-        SH = load('HINF_controllers.mat');
+
+        SH = ...
+            load('HINF_controllers.mat');
+
     else
+
         SH = struct;
+
     end
+
     if ismember('mixsyn',requestedNames)
-        controllers(end+1) = makeController( ...
-            'mixsyn','HINF',fetchSystem('K_mix',SH)); %#ok<AGROW>
+
+        controllers(end+1) = ...
+            makeController( ...
+                'mixsyn', ...
+                'HINF', ...
+                fetchSystem('K_mix',SH)); %#ok<AGROW>
+
     end
+
     if ismember('hinfsyn',requestedNames)
-        controllers(end+1) = makeController( ...
-            'hinfsyn','HINF',fetchSystem('K_hinfsyn',SH)); %#ok<AGROW>
+
+        controllers(end+1) = ...
+            makeController( ...
+                'hinfsyn', ...
+                'HINF', ...
+                fetchSystem('K_hinfsyn',SH)); %#ok<AGROW>
+
     end
+
     if ismember('PID+comp',requestedNames)
-        controllers(end+1) = makeController( ...
-            'PID+comp','HINF',fetchSystem('K_pidcomp',SH)); %#ok<AGROW>
+
+        controllers(end+1) = ...
+            makeController( ...
+                'PID+comp', ...
+                'HINF', ...
+                fetchSystem('K_pidcomp',SH)); %#ok<AGROW>
+
     end
+
+    %% ====================================================================
+    % MU-SYNTHESIS
+    % =====================================================================
+
     if ismember('mu-synthesis',requestedNames)
+
         if isfile('MU_controller.mat')
-            SM = load('MU_controller.mat');
+
+            SM = ...
+                load('MU_controller.mat');
+
         else
+
             SM = struct;
+
         end
-        controllers(end+1) = makeController( ...
-            'mu-synthesis','HINF',fetchSystem('K_mu',SM)); %#ok<AGROW>
+
+        controllers(end+1) = ...
+            makeController( ...
+                'mu-synthesis', ...
+                'HINF', ...
+                fetchSystem('K_mu',SM)); %#ok<AGROW>
+
     end
-    if ismember('H2',requestedNames)
-        if isfile('H2_controller.mat')
-            S2 = load('H2_controller.mat');
+
+    %% ====================================================================
+    % H2 CON SOFT INTEGRATOR
+    % =====================================================================
+    %
+    % Il controllore H2-soft usa la stessa interfaccia informativa
+    % dell'LQG:
+    %
+    %   [delta_r_alpha;
+    %    delta_r_beta;
+    %    delta_y_acc;
+    %    delta_y_mx;
+    %    delta_y_my]
+    %
+    % Nella RAS il riferimento incrementale e' nullo e pertanto viene
+    % utilizzato:
+    %
+    %   uk = [0; 0; deltaY]
+    %
+    % esattamente come per LQG/LQGI.
+
+    if ismember('H2-soft',requestedNames)
+
+        if isfile('H2_soft_controller.mat')
+
+            S2 = ...
+                load('H2_soft_controller.mat');
+
         else
+
             S2 = struct;
+
         end
-        controllers(end+1) = makeController( ...
-            'H2','HINF',fetchSystem('K_h2',S2)); %#ok<AGROW>
+
+        controllers(end+1) = ...
+            makeController( ...
+                'H2-soft', ...
+                'LQG', ...
+                fetchSystem('K_H2_soft',S2)); %#ok<AGROW>
+
     end
+
 end
+
 function K = fetchSystem(varName,S)
     if isfield(S,varName)
         K = S.(varName);
