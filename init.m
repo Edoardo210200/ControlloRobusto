@@ -48,12 +48,12 @@ act.td2 = 0.015;
 
 %% Rumore di attuazione
 act.Ts_noise = 1e-3;
-act.sigma_F1 = 0.01;   % N
-act.sigma_F2 = 0.01;   % N
+act.sigma_F1 = 0.05;   % N Vecchio: 0.01
+act.sigma_F2 = 0.05;   % N Vecchio: 0.01
 act.noisePower_F1 = act.sigma_F1^2 * act.Ts_noise;
 act.noisePower_F2 = act.sigma_F2^2 * act.Ts_noise;
 act.seed = 24680;
-act.noiseEnable = 0;
+act.noiseEnable = 1;
 
 %% Saturazioni sulle variazioni di forza
 act.deltaF1_min = -0.45;
@@ -65,7 +65,7 @@ act.deltaF2_max =  2.50;
 % SENSORI
 % ========================================================================
 sensor.seed = 12345;
-sensor.noiseEnable = 0; % mettere a 0 per la RAS
+sensor.noiseEnable = 1; % mettere a 0 per la RAS
 
 %% ========================================================================
 % VECTORNAV VN-100
@@ -96,7 +96,7 @@ sensor.mag.var = sensor.mag.sigma^2;
 %% ========================================================================
 % DISTURBI AERODINAMICI DI TEST
 % ========================================================================
-aero.enable = 1;
+aero.enable = 0;
 aero.alpha.time      = 6;
 aero.alpha.amplitude = 5e-3;      % [N*m]
 aero.beta.time       = 10;
@@ -106,13 +106,24 @@ aero.beta.amplitude  = 2e-3;      % [N*m]
 % Riferimenti
 % ========================================================================
 
-%% test 1: solo pitch
+
+
+%% test di confronto controllori
 ref.alpha.initial = alpha0;
-ref.alpha.final   = alpha0 + deg2rad(3);
+ref.alpha.final   = alpha0;
 ref.alpha.time    = 2;
 ref.beta.initial  = beta0;
 ref.beta.final    = beta0;
 ref.beta.time     = 2;
+
+
+%% test 1: solo pitch
+% ref.alpha.initial = alpha0;
+% ref.alpha.final   = alpha0 + deg2rad(3);
+% ref.alpha.time    = 2;
+% ref.beta.initial  = beta0;
+% ref.beta.final    = beta0;
+% ref.beta.time     = 2;
 
 %% test 2: solo yaw
 % ref.alpha.final = alpha0;
@@ -128,8 +139,8 @@ ref.beta.time     = 2;
 %% ========================================================================
 % HINF controller selection
 % ========================================================================
-HINF_controller_id = 3;  % 1: mixsyn, 2: hinfsyn, 3: PID+comp, 4: mu-synthesis
-LQG_controller_id = 1;  % 1: LQGI, 2: LQG, 3: H2, 4: H2 soft-integrator
+HINF_controller_id = 1;  % 1: mixsyn, 2: hinfsyn, 3: PID+comp, 4: mu-synthesis
+LQG_controller_id = 3;  % 1: LQGI, 2: LQG, 3: H2, 4: H2 soft-integrator
 
 Robust_plant_id = 2;
-LQG_plant_id = 1;
+LQG_plant_id = 2;
