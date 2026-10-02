@@ -96,6 +96,14 @@ if ~isfile([cfg.model '.slx']) && isfile('helicopter_2DOF(2).slx')
 end
 
 cfg.stopTime = 15;          % [s] - simulazioni standard
+% Confronto stocastico H2 / Hinf
+cfg.stochasticStopTime    = 30;      % [s]
+cfg.stochasticDiscardTime = 5;       % [s] esclusi dalle metriche RMS
+
+% Common random numbers:
+cfg.stochasticSensorSeed   = 31415;
+cfg.stochasticActuatorSeed = 27182;
+
 cfg.rasValidationStopTime = 40; % [s] - sola validazione del bordo RAS
 cfg.pngResolution = 300;    % [dpi]
 cfg.outputDir = fullfile(pwd,'simulink_result');
@@ -404,6 +412,84 @@ e.actuatorNoise = 1;
 
 EXP(end+1) = e;
 
+% ========================================================================
+% Confronto H2 / Hinf in presenza di disturbi stocastici
+% ========================================================================
+%
+% Riferimento fisso all'equilibrio.
+% Nessuna coppia aerodinamica deterministica.
+% Rumore di attuazione + rumore di misura.
+% Stessi seed per tutti i controllori.
+%
+% H2 e LQG sono entrambi inseriti per verificare anche che l'equivalenza
+% osservata nella prova deterministica venga mantenuta sotto eccitazione
+% stocastica. Il confronto principale per la relazione sara' H2 vs mixsyn.
+
+% ---- LQG: sanity check --------------------------------------------------
+e = makeExp( ...
+    'S1_LQG_stochastic_NL', ...
+    'LQG - eccitazione stocastica nominale', ...
+    'LQG', ...
+    2, ...                  % plant non lineare
+    2, ...                  % LQG
+    1, ...
+    refEquilibrium, ...
+    aeroOff, ...
+    deltaNominal);
+
+e.sensorNoise    = 1;
+e.actuatorNoise  = 1;
+e.sensorSeed     = cfg.stochasticSensorSeed;
+e.actuatorSeed   = cfg.stochasticActuatorSeed;
+e.stopTime       = cfg.stochasticStopTime;
+
+EXP(end+1) = e;
+
+
+% ---- H2 classico --------------------------------------------------------
+e = makeExp( ...
+    'S2_H2_stochastic_NL', ...
+    'H2 classico - eccitazione stocastica nominale', ...
+    'LQG', ...
+    2, ...
+    3, ...                  % H2 classico
+    1, ...
+    refEquilibrium, ...
+    aeroOff, ...
+    deltaNominal);
+
+e.sensorNoise    = 1;
+e.actuatorNoise  = 1;
+e.sensorSeed     = cfg.stochasticSensorSeed;
+e.actuatorSeed   = cfg.stochasticActuatorSeed;
+e.stopTime       = cfg.stochasticStopTime;
+
+EXP(end+1) = e;
+
+
+% ---- Hinf mixsyn --------------------------------------------------------
+e = makeExp( ...
+    'S3_mixsyn_stochastic_NL', ...
+    'Hinf mixsyn - eccitazione stocastica nominale', ...
+    'ROB', ...
+    2, ...
+    1, ...
+    1, ...                  % mixsyn
+    refEquilibrium, ...
+    aeroOff, ...
+    deltaNominal);
+
+e.sensorNoise    = 1;
+e.actuatorNoise  = 1;
+e.sensorSeed     = cfg.stochasticSensorSeed;
+e.actuatorSeed   = cfg.stochasticActuatorSeed;
+e.stopTime       = cfg.stochasticStopTime;
+
+EXP(end+1) = e;
+
+
+
+
 % ---- Validazione linearizzazione ----------------------------------------
 EXP(end+1) = makeExp('05_LQGI_linear', ...
     'LQGI - modello linearizzato', ...
@@ -589,15 +675,37 @@ for k = 1:numel(EXP)
     end
 
     % Simulazioni deterministiche per figure da relazione.
+    % actRun = act;
+    % sensorRun = sensor;
+    % % actRun.noiseEnable = cfg.defaultActuatorNoise;
+    % % sensorRun.noiseEnable = cfg.defaultSensorNoise;
+    % actRun.noiseEnable = exp.actuatorNoise;
+    % sensorRun.noiseEnable = exp.sensorNoise;
+    % 
+    % in = in.setVariable('act',actRun);
+    % in = in.setVariable('sensor',sensorRun);
+
     actRun = act;
     sensorRun = sensor;
-    % actRun.noiseEnable = cfg.defaultActuatorNoise;
-    % sensorRun.noiseEnable = cfg.defaultSensorNoise;
-    actRun.noiseEnable = exp.actuatorNoise;
+
+    actRun.noiseEnable    = exp.actuatorNoise;
     sensorRun.noiseEnable = exp.sensorNoise;
+
+    % Seed eventualmente specifici per la singola prova.
+    % Se NaN rimangono i valori definiti in init.m.
+    if isfinite(exp.actuatorSeed)
+        actRun.seed = exp.actuatorSeed;
+    end
+
+    if isfinite(exp.sensorSeed)
+        sensorRun.seed = exp.sensorSeed;
+    end
 
     in = in.setVariable('act',actRun);
     in = in.setVariable('sensor',sensorRun);
+
+
+
 
     % Punto iniziale RAS, quando richiesto.
     if ~isempty(exp.q0Override)
@@ -696,6 +804,52 @@ compareErrors(outputs,EXP, ...
     {'LQG','LQGI'},'LQG',SIG,comparisonDir,cfg, ...
     '02_LQG_vs_LQGI_disturbance_error', ...
     'Errore di tracking sotto disturbo aerodinamico costante');
+
+% ========================================================================
+% H2 classico vs Hinf sotto eccitazione stocastica comune
+% ========================================================================
+
+compareErrorsMixedFamilies( ...
+    outputs, ...
+    EXP, ...
+    {'S2_H2_stochastic_NL', ...
+    'S3_mixsyn_stochastic_NL'}, ...
+    {'H2','Hinf mixsyn'}, ...
+    {'LQG','ROB'}, ...
+    SIG, ...
+    comparisonDir, ...
+    cfg, ...
+    '16_H2_vs_Hinf_stochastic_error', ...
+    'H2 e Hinf in presenza di disturbi stocastici');
+
+
+compareControlsMixedFamilies( ...
+    outputs, ...
+    EXP, ...
+    {'S2_H2_stochastic_NL', ...
+    'S3_mixsyn_stochastic_NL'}, ...
+    {'H2','Hinf mixsyn'}, ...
+    {'LQG','ROB'}, ...
+    SIG, ...
+    comparisonDir, ...
+    cfg, ...
+    '17_H2_vs_Hinf_stochastic_control', ...
+    'Sforzo di controllo: H2 e Hinf sotto eccitazione stocastica');
+
+
+compareErrorsMixedFamilies( ...
+    outputs, ...
+    EXP, ...
+    {'S1_LQG_stochastic_NL', ...
+    'S2_H2_stochastic_NL'}, ...
+    {'LQG','H2'}, ...
+    {'LQG','LQG'}, ...
+    SIG, ...
+    comparisonDir, ...
+    cfg, ...
+    '16b_LQG_vs_H2_stochastic_error', ...
+    'Verifica LQG-H2 sotto la stessa eccitazione stocastica');
+
 
 % 8.2a Validazione progressiva LQG: tracking
 compareRuns(outputs,EXP, ...
@@ -953,7 +1107,9 @@ function E = emptyExperiment()
         'stopTime',NaN, ...
         'matchedTrim',false, ...
         'sensorNoise',0, ...
-        'actuatorNoise',0);
+        'actuatorNoise',0, ...
+        'sensorSeed', NaN, ...
+        'actuatorSeed', NaN);
 
 end
 
@@ -1420,6 +1576,151 @@ function compareControls(outputs,EXP,ids,labels,family,SIG,outDir,cfg,fileName,f
     sgtitle(figTitle,'Interpreter','none');
     exportFigure(f,fullfile(outDir,[fileName '.png']),cfg);
 end
+
+
+function compareErrorsMixedFamilies( ...
+    outputs,EXP,ids,labels,families,SIG,outDir,cfg,fileName,figTitle)
+
+idx = indicesForIds(EXP,ids);
+
+if any(cellfun(@isempty,outputs(idx)))
+    warning('Confronto %s saltato: una simulazione non disponibile.', ...
+        fileName);
+    return
+end
+
+f = newFigure(cfg);
+tiledlayout(2,1,'TileSpacing','compact','Padding','compact');
+
+nexttile;
+hold on;
+grid on;
+yline(0,'k--','HandleVisibility','off');
+
+for i = 1:numel(idx)
+    logs = getLogsout(outputs{idx(i)});
+    [ea,~] = errorSignals(logs,families{i},SIG);
+
+    plotSemanticTrace( ...
+        ea.Time, ...
+        rad2deg(ea.Data), ...
+        labels{i}, ...
+        1.5);
+end
+
+ylabel('$e_\alpha$ [deg]','Interpreter','latex');
+title('Pitch tracking error','Interpreter','latex');
+legend('Location','best');
+
+
+nexttile;
+hold on;
+grid on;
+yline(0,'k--','HandleVisibility','off');
+
+for i = 1:numel(idx)
+    logs = getLogsout(outputs{idx(i)});
+    [~,eb] = errorSignals(logs,families{i},SIG);
+
+    plotSemanticTrace( ...
+        eb.Time, ...
+        rad2deg(eb.Data), ...
+        labels{i}, ...
+        1.5);
+end
+
+xlabel('Time [s]','Interpreter','latex');
+ylabel('$e_\beta$ [deg]','Interpreter','latex');
+title('Yaw tracking error','Interpreter','latex');
+legend('Location','best');
+
+sgtitle(figTitle,'Interpreter','none');
+
+exportFigure( ...
+    f, ...
+    fullfile(outDir,[fileName '.png']), ...
+    cfg);
+end
+
+
+function compareControlsMixedFamilies( ...
+    outputs,EXP,ids,labels,families,SIG,outDir,cfg,fileName,figTitle)
+
+idx = indicesForIds(EXP,ids);
+
+if any(cellfun(@isempty,outputs(idx)))
+    warning('Confronto %s saltato: una simulazione non disponibile.', ...
+        fileName);
+    return
+end
+
+f = newFigure(cfg);
+tiledlayout(2,1,'TileSpacing','compact','Padding','compact');
+
+nexttile;
+hold on;
+grid on;
+
+for i = 1:numel(idx)
+    logs = getLogsout(outputs{idx(i)});
+    [u1,~] = controlSignals(logs,families{i},SIG);
+
+    plotSemanticTrace( ...
+        u1.Time, ...
+        u1.Data, ...
+        labels{i}, ...
+        1.5);
+end
+
+ylabel('$\Delta F_{1,cmd}$ [N]','Interpreter','latex');
+title('Main-rotor command','Interpreter','latex');
+legend('Location','best');
+
+
+nexttile;
+hold on;
+grid on;
+
+for i = 1:numel(idx)
+    logs = getLogsout(outputs{idx(i)});
+    [~,u2] = controlSignals(logs,families{i},SIG);
+
+    plotSemanticTrace( ...
+        u2.Time, ...
+        u2.Data, ...
+        labels{i}, ...
+        1.5);
+end
+
+xlabel('Time [s]','Interpreter','latex');
+ylabel('$\Delta F_{2,cmd}$ [N]','Interpreter','latex');
+title('Tail-rotor command','Interpreter','latex');
+legend('Location','best');
+
+sgtitle(figTitle,'Interpreter','none');
+
+exportFigure( ...
+    f, ...
+    fullfile(outDir,[fileName '.png']), ...
+    cfg);
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 function h = plotSemanticTrace(x,y,labelText,lineWidth)
 %PLOTSEMANTICTRACE Usa il colore globale quando labelText e' un controllore.

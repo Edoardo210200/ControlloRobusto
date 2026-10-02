@@ -53,7 +53,7 @@ cfg.controllerNames = { ...
     'hinfsyn', ...
     'PID+comp', ...
     'mu-synthesis', ...
-    'H2-soft'};
+     };
 
 %% ========================================================================
 % 1. INIZIALIZZAZIONE DEL PROGETTO
@@ -746,47 +746,7 @@ function controllers = loadControllers(requestedNames)
 
     end
 
-    %% ====================================================================
-    % H2 CON SOFT INTEGRATOR
-    % =====================================================================
-    %
-    % Il controllore H2-soft usa la stessa interfaccia informativa
-    % dell'LQG:
-    %
-    %   [delta_r_alpha;
-    %    delta_r_beta;
-    %    delta_y_acc;
-    %    delta_y_mx;
-    %    delta_y_my]
-    %
-    % Nella RAS il riferimento incrementale e' nullo e pertanto viene
-    % utilizzato:
-    %
-    %   uk = [0; 0; deltaY]
-    %
-    % esattamente come per LQG/LQGI.
-
-    if ismember('H2-soft',requestedNames)
-
-        if isfile('H2_soft_controller.mat')
-
-            S2 = ...
-                load('H2_soft_controller.mat');
-
-        else
-
-            S2 = struct;
-
-        end
-
-        controllers(end+1) = ...
-            makeController( ...
-                'H2-soft', ...
-                'LQG', ...
-                fetchSystem('K_H2_soft',S2)); %#ok<AGROW>
-
-    end
-
+   
 end
 
 function K = fetchSystem(varName,S)

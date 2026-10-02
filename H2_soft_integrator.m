@@ -129,7 +129,7 @@ Bd_augmented = [
 % soft.gain permette il tuning senza cambiare il resto della sintesi.
 
 soft.epsilon = 1e-3;       % [rad/s]
-soft.gain    = 1.0;
+soft.gain    = 2.0;
 
 soft.wd = ...
     soft.gain * [
