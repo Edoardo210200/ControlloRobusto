@@ -52,6 +52,7 @@ act.sigma_F1 = 0.01;   % N
 act.sigma_F2 = 0.01;   % N
 act.noisePower_F1 = act.sigma_F1^2 * act.Ts_noise;
 act.noisePower_F2 = act.sigma_F2^2 * act.Ts_noise;
+act.seed = 24680;
 act.noiseEnable = 0;
 
 %% Saturazioni sulle variazioni di forza
