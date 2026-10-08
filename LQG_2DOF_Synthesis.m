@@ -1,13 +1,6 @@
-%% NOTE TEORICHE - SINTESI LQG/LQGI
-% Il progetto LQG combina una retroazione ottima LQR con una stima di stato
-% di Kalman. La variante LQGI aggiunge stati integrali sugli errori angolari
-% per migliorare l'inseguimento a regime. La sintesi e' nominale; la
-% robustezza rispetto alle incertezze parametriche viene poi verificata
-% separatamente sui campioni del plant incerto.
-%
+%% SINTESI LQG/LQGI
 
 %% LQG_2DOF_SYNTHESIS
-%
 % Progetto LQG dell'elicottero 2DOF:
 %   1) LQG senza azione integrale
 %   2) LQG con azione integrale su alpha e beta
@@ -18,9 +11,6 @@
 %   - sensore VN-100 linearizzato attorno all'equilibrio;
 %   - rumore di attuazione;
 %   - rumore di misura accelerometro/magnetometro.
-%
-% Il progetto LQG viene effettuato sul plant nominale.
-% Le incertezze vengono utilizzate per la validazione successiva.
 close all;
 clc;
 
@@ -72,15 +62,12 @@ Gact_nominal.OutputName = {
 
 %% ========================================================================
 %  3. REALIZZAZIONE AUMENTATA ATTUATORI + ELICOTTERO
-%
 %  Stati:
-%
 %    xa = stati degli attuatori
 %    xh = [delta_alpha;
 %          delta_alpha_dot;
 %          delta_beta;
 %          delta_beta_dot]
-%
 %  xaug = [xa; xh]
 % ========================================================================
 [Aact,Bact,Cact,Dact] = ssdata(Gact_nominal);
@@ -146,16 +133,12 @@ Plant_augmented.OutputName = {
 
 %% ========================================================================
 %  4. LINEARIZZAZIONE DEL MODELLO DEL VN-100
-%
 %  Accelerometro:
 %     yacc = g*sin(alpha)
 %
 %  Magnetometro planare:
 %     mx = B0*cos(beta)
 %     my = -B0*sin(beta)
-%
-%  Il filtro usa le variazioni:
-%     delta_y = y - y0
 % ========================================================================
 g0 = p0.g;
 B0 = sensor.mag.B0;
@@ -217,16 +200,13 @@ fprintf('Massimo Re(lambda) modi non osservabili: controllo manuale richiesto.\n
 
 %% ========================================================================
 %  6. PESI LQR
-%
 %  Si usa una penalizzazione sulle grandezze fisiche:
-%
 %  z = [delta_F1;
 %       delta_F2;
 %       delta_alpha;
 %       delta_alpha_dot;
 %       delta_beta;
 %       delta_beta_dot]
-%
 %  secondo la regola di Bryson.
 % ========================================================================
 Cphysical = [
@@ -321,7 +301,6 @@ Kx_LQG = lqr(A,B,Q,R);
 Acl_stateFeedback = A - B*Kx_LQG;
 
 %% Prefiltro statico per riferimenti costanti alpha e beta
-%
 % u = -Kx*xhat + Nbar*r
 DCreference = ...
     -Ctrack * (Acl_stateFeedback \ B);
@@ -334,7 +313,6 @@ else
 end
 
 %% Realizzazione del controllore
-%
 % Ingressi:
 %   [delta_r_alpha;
 %    delta_r_beta;
@@ -372,7 +350,6 @@ K_LQG.StateName = compose("xhat_%d",(1:n)');
 
 %% ========================================================================
 %  9. LQG CON AZIONE INTEGRALE
-%
 %  xi_dot = delta_r - Ctrack*xhat
 %
 %  Stati aumentati per l'LQR:
@@ -396,8 +373,6 @@ Kaug_LQI = lqr(A_LQI,B_LQI,Q_LQI,R);
 Kx_LQGI = Kaug_LQI(:,1:n);
 Ki_LQGI = Kaug_LQI(:,n+1:end);
 
-%% Il filtro di Kalman stima solo il plant fisico aumentato,
-%  non gli stati integrali.
 Ac_LQGI = [
     A - B*Kx_LQGI - Ke*Cmeas,   -B*Ki_LQGI;
     zeros(nr,n),                 zeros(nr,nr)
@@ -432,12 +407,9 @@ K_LQGI.StateName = [
 %  10. ANALISI NOMINALE DEI SISTEMI CHIUSI
 % ========================================================================
 % Costruzione esplicita dei sistemi chiusi con stato:
-%
 % [x;
 %  xhat]
-%
 % oppure:
-%
 % [x;
 %  xhat;
 %  xi]

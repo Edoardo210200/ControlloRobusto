@@ -1,36 +1,23 @@
-%% NOTE TEORICHE - MODELLAZIONE INCERTA E LINEARIZZAZIONE
+%% MODELLAZIONE INCERTA E LINEARIZZAZIONE
 % Questo script costruisce il modello linearizzato dell'elicottero 2DOF
 % attorno a un equilibrio non nullo e rappresenta le principali variazioni
-% parametriche mediante oggetti ureal. In controllo robusto, questa
-% rappresentazione separa il modello nominale dalla famiglia di plant
-% ammissibili e costituisce la base per analisi di stabilita' e prestazione
-% robuste. L'ordine delle istruzioni eseguibili e i parametri numerici
-% originali sono mantenuti invariati.
-%
+% parametriche mediante oggetti ureal.
 
 %% BUILD_UNCERTAIN_LINEAR_MODEL
-%
 % Costruzione del modello linearizzato incerto dell'elicottero 2DOF
 % attorno a un punto di equilibrio non nullo.
 %
-% Richiede:
-%   - Control System Toolbox
-%   - Robust Control Toolbox
-%
 % Stato:
-%
 %   x = [alpha;
 %        alpha_dot;
 %        beta;
 %        beta_dot]
 %
 % Ingresso:
-%
 %   u = [F1;
 %        F2]
 %
 % Il modello linearizzato è espresso nelle variabili incrementali:
-%
 %   delta_x = x - x0
 %   delta_u = u - u0
 %
@@ -115,14 +102,11 @@ x0 = [
 %  3. CALCOLO DELLE FORZE DI EQUILIBRIO
 %  ================================================================
 % All'equilibrio:
-%
 % F10*cos(beta0) + epsilon_p*F20*sin(beta0)
 %       = m*g*sin(alpha0)
 %
 % epsilon_y*F10*sin(alpha0) + F20*cos(alpha0)
 %       = 0
-%
-% Il fattore l è stato semplificato da entrambi i membri.
 equilibrium_matrix = [
     cos(beta0),                   epsilon_p * sin(beta0);
     epsilon_y * sin(alpha0),      cos(alpha0)
@@ -186,7 +170,6 @@ a23 = ...
         + epsilon_p * F20 * cos(beta0) ...
     ) / J_alpha;
 % Derivata della dinamica yaw rispetto ad alpha
-%
 % Il termine contenente dJ_beta/dalpha si annulla nel punto di
 % equilibrio perché il numeratore della dinamica yaw è nullo.
 a41 = ...
@@ -224,9 +207,6 @@ B_uncertain = [
 %% ================================================================
 %  7. MATRICI DI USCITA
 %  ================================================================
-% In questa prima rappresentazione tutti gli stati sono disponibili
-% in uscita. La matrice di misura potrà essere modificata durante
-% la progettazione del filtro di Kalman.
 C_state = eye(4);
 D_state = zeros(4,2);
 
@@ -262,7 +242,6 @@ P_nominal = ss(P_uncertain.NominalValue);
 
 %% ================================================================
 % INGRESSI DI DISTURBO AERODINAMICO
-%
 % d = [d_alpha; d_beta] [N*m]
 % ================================================================
 Bd_uncertain = [
@@ -335,11 +314,8 @@ fprintf('rank(obsv(A,C)) = %d su %d\n', ...
 %  10. MODELLO CON SOLI ANGOLI MISURATI
 %  ================================================================
 % Questa rappresentazione sarà utile per il successivo LQG:
-%
 %   y = [delta_alpha;
 %        delta_beta]
-%
-% Le velocità verranno stimate dal filtro di Kalman.
 C_angles = [
     1, 0, 0, 0;
     0, 0, 1, 0
@@ -365,15 +341,5 @@ fprintf('=================================================\n');
 fprintf('rank(obsv(A,C_angles)) = %d su %d\n', ...
     angle_observability_rank, size(P_nominal_angles.A,1));
 
-%% Le principali variabili rimangono disponibili nel workspace:
-%
-% params
-% x0
-% u0_nominal
-% u0_uncertain
-% P_uncertain
-% P_nominal
-% P_uncertain_angles
-% P_nominal_angles
 u0_nominal = double(F0_nominal);
 u0 = u0_nominal;

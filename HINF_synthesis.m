@@ -1,18 +1,12 @@
-%% NOTE TEORICHE - SINTESI H-INFINITY
+%% SINTESI H-INFINITY
 % Confronta tre strategie sul medesimo plant normalizzato: mixsyn, hinfsyn
-% e hinfstruct con struttura PID + compensatore dinamico. La norma gamma
-% misura il peggior guadagno pesato del closed loop: valori minori indicano
-% migliore soddisfacimento congiunto dei requisiti imposti dai pesi.
-%
+% e hinfstruct con struttura PID + compensatore dinamico.
 
 %% HINF_SYNTHESIS
-%
 % Sintesi:
-%
 %   1) mixsyn
 %   2) hinfsyn
 %   3) hinfstruct:
-%
 %        PID alpha -> lead/lag alpha
 %        PID beta  -> lead/lag beta
 close all;
@@ -96,7 +90,6 @@ fprintf( ...
 
 %% ========================================================================
 % 3. HINFSTRUCT:
-%
 % PID + COMPENSATORE DINAMICO
 % ========================================================================
 fprintf('\n============================================================\n');
@@ -163,20 +156,15 @@ Kbeta_tunable.Tf.Minimum = ...
 
 %% ========================================================================
 % 3.2 COMPENSATORI DINAMICI
-%
 % Inizializzazione più coerente con la nuova banda.
 %
 % Pitch:
-%
 %     1 + s/2.5
-% ----------------
 %      1 + s/8
 %
 %
 % Yaw:
-%
 %      1 + s/2
-% ----------------
 %      1 + s/6
 % ========================================================================
 Falpha0 = ...
@@ -206,7 +194,6 @@ Cbeta_tunable = ...
 
 %% ========================================================================
 % 3.3 CONTROLLORE STRUTTURATO CON DECOUPLER MIMO
-%
 % e -> PID/lead-lag diagonali -> Ddec -> u
 % ========================================================================
 Kdiag_tunable = ...

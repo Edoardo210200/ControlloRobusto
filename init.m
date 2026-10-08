@@ -1,9 +1,9 @@
-%% NOTE TEORICHE - INIZIALIZZAZIONE DEL MODELLO NON LINEARE
+%% INIZIALIZZAZIONE DEL MODELLO NON LINEARE
 % Definisce parametri nominali, punto di equilibrio, attuatori, sensori,
 % rumori, disturbi e riferimenti usati dal modello Simulink e dalle
 % validazioni. Questi dati costituiscono il riferimento nominale rispetto
 % al quale vengono introdotte e campionate le incertezze.
-%
+
 
 %% Parametri nominali del modello non lineare
 p0.J_alpha = 0.012;       % kg m^2
@@ -86,7 +86,6 @@ sensor.acc.var = sensor.acc.sigma^2;
 sensor.mag.fs = 200;              % [Hz]
 sensor.mag.Ts = 1/sensor.mag.fs;  % [s]
 % Intensità del campo magnetico locale
-% (da aggiornare eventualmente con il valore reale del sito sperimentale)
 sensor.mag.B0 = 46.5;             % [uT]
 % Noise Density VN-100
 sensor.mag.ND = 0.014;            % [uT/sqrt(Hz)]
@@ -101,12 +100,6 @@ aero.alpha.time      = 6;
 aero.alpha.amplitude = 5e-3;      % [N*m]
 aero.beta.time       = 10;
 aero.beta.amplitude  = 2e-3;      % [N*m]
-
-%% ========================================================================
-% Riferimenti
-% ========================================================================
-
-
 
 %% test di confronto controllori
 ref.alpha.initial = alpha0;

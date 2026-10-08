@@ -1,29 +1,10 @@
-%% NOTE TEORICHE - REGIONE DI STABILITA' ASINTOTICA
+%% REGIONE DI STABILITA' ASINTOTICA
 % La RAS viene stimata numericamente su un orizzonte finito. Un punto e'
 % classificato nella regione se, senza violare i limiti globali, rimane
 % entro le tolleranze di stato durante la coda finale della simulazione.
 % La mappa e' quindi una stima numerica conservativa della regione di
 % attrazione, dipendente da tFinal e dalle tolleranze dichiarate.
 
-%% RAS_VECTORIZED_FINAL_V5
-% =========================================================================
-% RAS numerica vettorializzata - closed-loop CONTINUO
-%
-% V4:
-%   - plant non lineare: RK4 vettorializzato;
-%   - controller lineari: propagazione ESATTA via matrice esponenziale
-%     per ingresso sensor-ZOH costante nel passo;
-%   - motori EMAX: RK4 continuo, pilotati dal comando del controller
-%     valutato a t, t+h/2 e t+h;
-%   - saturazione a ogni stadio del motore;
-%   - sensori VN-100: ZOH;
-%   - transport delay: buffer campionato corretto ai sample time.
-%
-% La propagazione esatta dei controller evita l'instabilità numerica
-% dell'RK4 esplicito sul controllore mu di ordine elevato.
-%
-% MATLAB R2025a / R2026a.
-% =========================================================================
 close all;
 clc;
 
@@ -86,8 +67,6 @@ for k = 1:numel(controllers)
         size(controllers(k).B,2), ...
         size(controllers(k).C,1));
 end
-% Transizioni esatte del controller per ingresso costante nel passo.
-% I sensori sono ZOH, quindi uk è effettivamente costante tra due update.
 for k = 1:numel(controllers)
     nk = size(controllers(k).A,1);
     if nk > 0
@@ -230,9 +209,7 @@ for ic = 1:numel(controllers)
             break
         end
         idx = find(active);
-        % -------------------------------------------------------------
         % Sensori deterministici con ZOH
-        % -------------------------------------------------------------
         if mod(istep-1,accEvery) == 0
             alphaHold(idx) = X(1,idx);
         end
@@ -245,10 +222,8 @@ for ic = 1:numel(controllers)
            -B0*sin(betaHold(idx))
         ];
         deltaY = y - y0_sensor;
-        % -------------------------------------------------------------
         % Ingresso al controller, mantenuto costante durante il passo RK4
         % perché proviene dai blocchi ZOH dei sensori.
-        % -------------------------------------------------------------
         if strcmp(Ctl.family,'LQG')
             uk = [
                 zeros(2,numel(idx));
@@ -258,19 +233,13 @@ for ic = 1:numel(controllers)
             deltaAngleEstimated = Hy*deltaY;
             uk = -deltaAngleEstimated;
         end
-        % -------------------------------------------------------------
-        % Forze DELAYED viste dal plant durante il passo corrente.
-        % Il transport delay rende questa uscita già dipendente dal passato.
-        % -------------------------------------------------------------
         deltaF1Delayed = delayBuffer1(delayPtr1,idx);
         deltaF2Delayed = delayBuffer2(delayPtr2,idx);
         Fdelayed = [
             u0(1) + deltaF1Delayed;
             u0(2) + deltaF2Delayed
         ];
-        % -------------------------------------------------------------
         % RK4 DEL PLANT NON LINEARE
-        % -------------------------------------------------------------
         Xi = X(:,idx);
         p1 = helicopterDerivativeVectorized(Xi,Fdelayed,p0);
         p2 = helicopterDerivativeVectorized( ...
@@ -281,14 +250,11 @@ for ic = 1:numel(controllers)
             Xi + cfg.dt*p3,Fdelayed,p0);
         X(:,idx) = Xi + ...
             (cfg.dt/6)*(p1 + 2*p2 + 2*p3 + p4);
-        % -------------------------------------------------------------
         % CONTROLLER: PROPAGAZIONE ESATTA; MOTORI: RK4 CONTINUO
-        %
         % uk è costante nel passo per effetto degli ZOH sensore.
         % Calcoliamo esattamente lo stato del controller a:
         %   t, t+h/2, t+h
         % e usiamo i relativi comandi per gli stadi RK4 dei motori.
-        % -------------------------------------------------------------
         Xk0 = Xk(:,idx);
         if nk > 0
             XkHalf = ...
@@ -327,9 +293,7 @@ for ic = 1:numel(controllers)
         maxAbsCommand2(idx) = max( ...
             maxAbsCommand2(idx), ...
             max([abs(cmd2_1); abs(cmd2_2); abs(cmd2_4)],[],1));
-        % -------------------------------------------------------------
         % Nuova uscita dei motori nel delay buffer
-        % -------------------------------------------------------------
         motorOut1 = Cm1*Xm1(:,idx);
         motorOut2 = Cm2*Xm2(:,idx);
         delayBuffer1(delayPtr1,idx) = motorOut1;
@@ -342,9 +306,7 @@ for ic = 1:numel(controllers)
         if delayPtr2 > (delaySteps2+1)
             delayPtr2 = 1;
         end
-        % -------------------------------------------------------------
         % Diagnostica / early reject
-        % -------------------------------------------------------------
         maxAbsAlpha(idx) = max(maxAbsAlpha(idx),abs(X(1,idx)));
         maxAbsBeta(idx)  = max(maxAbsBeta(idx), abs(X(3,idx)));
         finiteNow = ...
@@ -365,9 +327,7 @@ for ic = 1:numel(controllers)
                 active(badIdx) = false;
             end
         end
-        % -------------------------------------------------------------
         % Criterio di convergenza nell'ultimo 10 %
-        % -------------------------------------------------------------
         tNext = istep*cfg.dt;
         if tNext >= tailStartTime
             idxTail = find(active & ~rejected);
@@ -514,7 +474,7 @@ for ic = 1:numel(results)
         if ~isempty(c)
             h.LineColor = c;
         end
-        hLegend(end+1) = h; %#ok<SAGROW>
+        hLegend(end+1) = h; 
     end
 end
 plot( ...
@@ -662,7 +622,7 @@ function controllers = loadControllers(requestedNames)
             makeController( ...
                 'LQG', ...
                 'LQG', ...
-                fetchSystem('K_LQG',SL)); %#ok<AGROW>
+                fetchSystem('K_LQG',SL)); 
 
     end
 
@@ -672,7 +632,7 @@ function controllers = loadControllers(requestedNames)
             makeController( ...
                 'LQGI', ...
                 'LQG', ...
-                fetchSystem('K_LQGI',SL)); %#ok<AGROW>
+                fetchSystem('K_LQGI',SL));
 
     end
 
@@ -697,7 +657,7 @@ function controllers = loadControllers(requestedNames)
             makeController( ...
                 'mixsyn', ...
                 'HINF', ...
-                fetchSystem('K_mix',SH)); %#ok<AGROW>
+                fetchSystem('K_mix',SH)); 
 
     end
 
@@ -707,7 +667,7 @@ function controllers = loadControllers(requestedNames)
             makeController( ...
                 'hinfsyn', ...
                 'HINF', ...
-                fetchSystem('K_hinfsyn',SH)); %#ok<AGROW>
+                fetchSystem('K_hinfsyn',SH)); 
 
     end
 
@@ -717,7 +677,7 @@ function controllers = loadControllers(requestedNames)
             makeController( ...
                 'PID+comp', ...
                 'HINF', ...
-                fetchSystem('K_pidcomp',SH)); %#ok<AGROW>
+                fetchSystem('K_pidcomp',SH));
 
     end
 
@@ -742,7 +702,7 @@ function controllers = loadControllers(requestedNames)
             makeController( ...
                 'mu-synthesis', ...
                 'HINF', ...
-                fetchSystem('K_mu',SM)); %#ok<AGROW>
+                fetchSystem('K_mu',SM));
 
     end
 
@@ -819,7 +779,6 @@ function [cmd1,cmd2] = controllerCommand(Xk,uk,Ctl,act)
         act.deltaF2_max);
 end
 function [Phi,Gamma] = exactZOH(A,B,h)
-    % Exact state transition for xdot=A*x+B*u with u constant over h.
     n = size(A,1);
     m = size(B,2);
     if n == 0

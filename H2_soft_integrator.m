@@ -1,5 +1,4 @@
 %% H2_SOFT_INTEGRATOR
-%
 % Sintesi H2 con disturbance shaping a bassa frequenza.
 %
 % Il controllore usa:
@@ -7,9 +6,6 @@
 %   - gli stessi Q e R;
 %   - le stesse covarianze W e V;
 %   - due dinamiche lente associate alle coppie d_alpha e d_beta.
-%
-% Il soft integrator NON integra l'errore di tracking.
-% Introduce nel problema di sintesi un modello di disturbo quasi-integrale.
 
 close all;
 clc;
@@ -27,7 +23,6 @@ end
 cd(projectRoot);
 addpath(projectRoot);
 
-% Stessa sequenza usata negli altri script del progetto.
 build_uncertain_linear_model;
 
 projectRoot = pwd;
@@ -86,9 +81,7 @@ nd = 2;
 %% ========================================================================
 % 2. MATRICE DELLE COPPIE AERODINAMICHE SUL MODELLO AUMENTATO
 % ========================================================================
-%
 % P_nominal_ext ha gli ingressi:
-%
 %   [delta_F1;
 %    delta_F2;
 %    d_alpha;
@@ -114,19 +107,14 @@ Bd_augmented = [
 %% ========================================================================
 % 3. PARAMETRI DEL SOFT INTEGRATOR
 % ========================================================================
-%
 % Wd_i(s) = wd_i / (s + epsilon)
-%
 % epsilon molto piccolo -> comportamento quasi-integrale nella regione
 % di frequenza di interesse.
 %
 % Come punto di partenza usiamo come numeratori le ampiezze delle coppie
 % aerodinamiche gia' adottate nel progetto:
-%
 %   d_alpha = 5e-3 Nm
 %   d_beta  = 2e-3 Nm
-%
-% soft.gain permette il tuning senza cambiare il resto della sintesi.
 
 soft.epsilon = 1e-3;       % [rad/s]
 soft.gain    = 2.0;
@@ -165,22 +153,16 @@ Vhalf = chol(V,'lower');
 %% ========================================================================
 % 5. MODELLO AUMENTATO CON GLI STATI DEL DISTURBO
 % ========================================================================
-%
 % Stato complessivo:
-%
 %   x_soft = [x;
 %             x_d]
-%
 % con
-%
 %   xdot   = A*x + B*u + Bd_augmented*x_d + Gnoise*w
-%
 %   xdot_d = -epsilon*x_d + WdSoft*eta_d
 
 Asoft = [
     A, ...
     Bd_augmented;
-
     zeros(nd,n), ...
     -soft.epsilon*eye(nd)
 ];
@@ -188,13 +170,10 @@ Asoft = [
 %% ========================================================================
 % 6. INGRESSI ESOGENI
 % ========================================================================
-%
 % eta =
-%
 %   [eta_w;
 %    eta_v;
 %    eta_d]
-%
 % dove:
 %   eta_w = rumore di processo normalizzato
 %   eta_v = rumore di misura normalizzato
@@ -218,10 +197,6 @@ B2soft = [
 %% ========================================================================
 % 7. USCITE DI PRESTAZIONE
 % ========================================================================
-%
-% Si continua a penalizzare esclusivamente lo stato fisico x e il comando u.
-% Gli stati x_d appartengono al modello del disturbo e non sono direttamente
-% inclusi nella funzione costo.
 
 C1soft = [
     Qhalf, zeros(n,nd);
@@ -304,17 +279,11 @@ fprintf( ...
 %% ========================================================================
 % 11. PREFILTRO STATICO PER IL TRACKING
 % ========================================================================
-%
 % Il controllore restituito da h2syn chiude il problema di regolazione:
-%
 %       u_fb = K_H2_soft_y * y
 %
 % Per mantenere la stessa interfaccia di LQG introduciamo:
-%
 %       u = u_fb + Nbar_H2_soft*r
-%
-% Nbar viene calcolato sul guadagno statico DEL NUOVO closed loop,
-% non viene riciclato quello dell'LQG.
 
 Gq = ss( ...
     A, ...
@@ -370,9 +339,7 @@ disp(Nbar_H2_soft);
 %% ========================================================================
 % 12. CONTROLLERE FINALE
 % ========================================================================
-%
 % Ingressi:
-%
 %   [delta_r_alpha;
 %    delta_r_beta;
 %    delta_y_acc;
@@ -380,7 +347,6 @@ disp(Nbar_H2_soft);
 %    delta_y_my]
 %
 % Uscite:
-%
 %   [delta_F1_cmd;
 %    delta_F2_cmd]
 

@@ -1,21 +1,7 @@
 %% RUN - ESECUZIONE COMPLETA DEL PROGETTO DI CONTROLLO ROBUSTO
-% Esegue gli script nell'ordine richiesto dalle loro dipendenze, salva
-% automaticamente tutte le figure in PNG (300 dpi) nella cartella
-% result_plot e raccoglie i risultati CSV nella cartella analysis_result.
-%
-% IMPORTANTE:
-% - il file orchestra la baseline robusta e la nuova sintesi H2;
-% - build_uncertain_linear_model.m viene eseguito per primo perche' crea
-%   P_nominal/P_uncertain e contiene intenzionalmente clearvars;
-% - init.m viene eseguito subito dopo per ripristinare i parametri nominali,
-%   attuatori e sensori richiesti dagli script successivi;
-% - il workspace viene poi mantenuto tra gli script, come richiesto dalle
-%   dipendenze originali del progetto.
 
 close all;
 clc;
-
-% Porta MATLAB nella cartella del pacchetto.
 projectRoot = fileparts(mfilename('fullpath'));
 if isempty(projectRoot)
     projectRoot = pwd;
@@ -34,9 +20,6 @@ build_uncertain_linear_model;
 %% 2. Parametri del modello non lineare / Simulink
 fprintf('\n[02/12] init.m\n');
 init;
-
-% build_uncertain_linear_model contiene clearvars: le cartelle di output
-% vengono quindi definite soltanto dopo la sua esecuzione.
 projectRoot = pwd;
 resultPlotDir = fullfile(projectRoot,'result_plot');
 analysisResultDir = fullfile(projectRoot,'analysis_result');
@@ -48,7 +31,6 @@ if ~exist(analysisResultDir,'dir')
     mkdir(analysisResultDir);
 end
 
-% Pulisce solo i vecchi PNG/CSV generati da precedenti esecuzioni complete.
 deleteIfPresent(fullfile(resultPlotDir,'*.png'));
 deleteIfPresent(fullfile(analysisResultDir,'*.csv'));
 
@@ -130,9 +112,7 @@ run_simulink_simulations;
 % ========================================================================
 
 function saveOpenFigures(outputDir,scriptTag)
-%SAVEOPENFIGURES Esporta in PNG tutte le figure aperte dallo script appena
-% eseguito. I nomi derivano dalla proprieta' Figure.Name e vengono resi
-% compatibili con il filesystem. Nessun dato del grafico viene modificato.
+% Esporta in PNG tutte le figure aperte dallo script appena eseguito.
 
     figs = findall(groot,'Type','figure');
 
@@ -140,7 +120,6 @@ function saveOpenFigures(outputDir,scriptTag)
         return;
     end
 
-    % Ordine crescente per numero figura, per rendere deterministico l'output.
     [~,idx] = sort([figs.Number]);
     figs = figs(idx);
 
@@ -170,22 +149,19 @@ function saveOpenFigures(outputDir,scriptTag)
             candidate = baseName + "_" + string(suffix);
             suffix = suffix + 1;
         end
-        usedNames(end+1,1) = candidate; %#ok<AGROW>
+        usedNames(end+1,1) = candidate; 
 
         pngPath = fullfile(outputDir,char(candidate + ".png"));
 
         try
             exportgraphics(fig,pngPath,'Resolution',300);
         catch
-            % Fallback compatibile con figure per cui exportgraphics fallisce.
             print(fig,pngPath,'-dpng','-r300');
         end
     end
 end
 
 function deleteIfPresent(pattern)
-%DELETEIFPRESENT Elimina i file che corrispondono al pattern indicato.
-
     files = dir(pattern);
     for iFile = 1:numel(files)
         delete(fullfile(files(iFile).folder,files(iFile).name));
