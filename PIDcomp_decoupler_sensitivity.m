@@ -1,15 +1,6 @@
 %% PIDCOMP_DECOUPLER_SENSITIVITY_NL
 % Sensibilita' del disaccoppiatore statico del controllore hinfstruct
 % rispetto alle incertezze parametriche del modello NON LINEARE.
-%
-% Controller usato in Simulink:
-%   HINF_controller_id = 3
-%   PID alpha/beta + lead/lag Falpha/Fbeta + Ddec_phys.
-%
-% Il controllore resta SEMPRE quello sintetizzato sul nominale.
-% Si variano soltanto i parametri del plant non lineare tramite delta_plant.
-% Per isolare il Ddec si usano: trim coerente col campione, attuatori
-% nominali, nessun rumore, nessun disturbo aerodinamico.
 
 close all; clc;
 
@@ -18,7 +9,6 @@ projectRoot = fileparts(mfilename('fullpath'));
 if isempty(projectRoot), projectRoot = pwd; end
 cd(projectRoot); addpath(projectRoot);
 
-% Contiene clearvars: eseguirlo prima di definire la campagna.
 build_uncertain_linear_model;
 projectRoot = pwd; addpath(projectRoot);
 init;
@@ -28,7 +18,6 @@ load('HINF_setup.mat');
 load('HINF_controllers.mat');
 load('MU_controller.mat');
 
-% Il modello compila anche il ramo LQG.
 if ~exist('Aobs','var') || ~exist('Bobs','var') || ...
         ~exist('Cobs','var') || ~exist('Dobs','var') || ~exist('xhat0','var')
 
@@ -61,8 +50,6 @@ cfg.betaStep  = deg2rad(-5);
 
 cfg.preYawBaseline = 0.75;
 
-% TRUE = consigliato per la figura principale:
-% ogni plant parte dal proprio equilibrio.
 cfg.useMatchedTrim = true;
 
 cfg.showFigures = false;
@@ -91,14 +78,6 @@ load_system(cfg.model);
 closeScopes(cfg.model);
 
 %% 2) Test sequenziale per le due direzioni di coupling
-%
-% 2...8 s:
-% alpha cambia, beta_ref resta costante.
-% beta-beta_ref = coupling pitch -> yaw.
-%
-% da 8 s:
-% beta cambia, alpha_ref resta costante.
-% nuova escursione di e_alpha = coupling yaw -> pitch.
 
 refRun = ref;
 
@@ -124,7 +103,6 @@ sensorRun = sensor;
 sensorRun.noiseEnable = 0;
 
 %% 3) Campioni parametrici del plant non lineare
-%
 % Ordine:
 % [J_alpha, J_y, J_z, m, l, epsilon_p, epsilon_y]
 
@@ -132,7 +110,6 @@ rng(cfg.seed,'twister');
 
 deltaSamples = -1 + 2*rand(7,cfg.nSamples);
 
-% Sample severo gia' usato nel progetto.
 deltaRobustTest = [
     +1;
     -1;
@@ -656,7 +633,6 @@ if success(1)
         'previous', ...
         'extrap');
 
-    % Stessa finestra anche per la curva nominale.
     maskPitchYaw = ...
         b.Time >= cfg.alphaStepTime & ...
         b.Time <  cfg.betaStepTime;
@@ -939,32 +915,19 @@ exportFig( ...
 % tutti gli altri parametri al valore nominale.
 %
 % Per ogni parametro vengono quindi eseguite 2 simulazioni:
-%
 %       7 parametri x 2 estremi = 14 simulazioni
 %
-% Il controllore rimane SEMPRE quello nominale:
-% PID + lead/lag + Ddec ottenuto con hinfstruct.
-%
 % La sensibilita' associata al parametro j viene definita come:
-%
 %   S_j = max( |C_j^- - C_0| , |C_j^+ - C_0| )
-%
 % dove:
 %   C_0   = coupling dinamico nominale;
 %   C_j^- = coupling con il solo parametro j a delta_j = -1;
 %   C_j^+ = coupling con il solo parametro j a delta_j = +1.
-%
-% L'indice e' espresso in PUNTI PERCENTUALI di coupling.
-% Una barra grande indica quindi che la variazione ammessa di quel
-% parametro modifica sensibilmente il grado di disaccoppiamento.
 
 fprintf('\n============================================================\n');
 fprintf('ANALISI OAT - SENSIBILITA'' PARAMETRICA DEL DISACCOPPIATORE\n');
 fprintf('14 simulazioni aggiuntive sul modello non lineare\n');
 fprintf('============================================================\n');
-
-% Ordine coerente con delta_plant:
-% [J_alpha, J_y, J_z, m, l, epsilon_p, epsilon_y]
 
 paramLabels = { ...
     '$J_\alpha$', ...
@@ -1019,8 +982,6 @@ for j = 1:nParams
 
         in = in.setVariable( ...
             'Robust_plant_id',2);
-
-        % Il ramo LQG deve comunque essere compilabile
         in = in.setVariable( ...
             'LQG_controller_id',1);
 
@@ -1056,8 +1017,6 @@ for j = 1:nParams
         in = in.setModelParameter( ...
             'StopTime',num2str(cfg.stopTime));
 
-        % Mantiene disabilitato il diagnostico gia' eliminato
-        % dalla campagna principale.
         in = in.setModelParameter( ...
             'UnderSpecifiedDimensionMsg','none');
 
@@ -1192,11 +1151,6 @@ for j = 1:nParams
 end
 
 %% Calcolo della sensibilita' parametrica
-%
-% Il nominale e' gia' stato simulato nella campagna principale:
-%
-%   pitchToYawPeakPct(1)
-%   yawToPitchPeakPct(1)
 
 C0_pitchToYaw = ...
     pitchToYawPeakPct(1);

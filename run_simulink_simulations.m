@@ -1,34 +1,5 @@
 %% RUN_SIMULINK_CAMPAIGN
-% Campagna automatica di simulazioni Simulink per la relazione finale
-% Traccia n. 3 - Controllo Robusto, Elicottero 2DOF
-%
-% Compatibile con MATLAB / Simulink R2026a.
-%
-% PRESUPPOSTI DEL MODELLO
-% ----------------------
-% 1) Il modello si chiama helicopter_2DOF.slx (modificare cfg.model se diverso).
-% 2) Sono stati introdotti i selettori:
-%       LQG_plant_id      : 1 = lineare, 2 = non lineare
-%       Robust_plant_id   : 1 = lineare, 2 = non lineare
-%       LQG_controller_id : 1 = LQGI, 2 = LQG, 3 = H2, 4 = H2 soft-integrator
-%       HINF_controller_id: 1 = mixsyn, 2 = hinfsyn,
-%                           3 = PID+comp, 4 = mu-synthesis
-% 3) E' attivo Signal Logging (logsout) per i segnali elencati in SIG.
-% 4) I segnali di reporting sono SOLO derivazioni e non rientrano nel loop.
-%
-% OUTPUT
-% ------
-% Crea la cartella ./simulink_result contenente:
-%   - una sottocartella per ogni simulazione;
-%   - PNG a 300 dpi equivalenti agli Scope di reporting;
-%   - figure comparative finali;
-%   - campaign_summary.csv.
-%
-% NOTA
-% ----
-% I grafici vengono ricostruiti dai segnali logsout anziche' "fotografare"
-% la finestra Scope. In questo modo sono riproducibili, vettorialmente puliti
-% e pronti per essere inseriti nella relazione.
+
 
 clear;
 close all;
@@ -37,11 +8,6 @@ clc;
 %% ========================================================================
 % 0. INIZIALIZZAZIONE DEL PROGETTO
 % =========================================================================
-%
-% Gli script di inizializzazione vengono eseguiti nel Base Workspace,
-% cioe' nello stesso workspace usato da Simulink per risolvere i parametri
-% dei blocchi. Non viene usata la funzione MATLAB run(), cosi' non esiste
-% alcun conflitto con eventuali file run.m presenti nel progetto.
 
 runFirstExistingScriptInBase({ ...
     'build_uncertain_linear_model.m', ...
@@ -51,11 +17,6 @@ runFirstExistingScriptInBase({ ...
     'init.m', ...
     'init(1).m'});
 
-% Se per qualsiasi motivo init.m non ha creato ref/aero, li ricostruiamo
-% con i valori di test gia' adottati nel progetto.
-ensureSimulationProfilesInBase();
-
-% I controllori e i dati di progetto devono essere visibili a Simulink.
 loadFirstExistingToBase({'LQG_2DOF_Controllers.mat'});
 loadFirstExistingToBase({'H2_LQG_controller.mat'});
 loadFirstExistingToBase({'H2_soft_controller.mat'});
@@ -63,11 +24,8 @@ loadFirstExistingToBase({'HINF_setup.mat'});
 loadFirstExistingToBase({'HINF_controllers.mat'});
 loadFirstExistingToBase({'MU_controller.mat'});
 
-% Ricostruisce Aobs, Bobs, Cobs, Dobs, xhat0 per il blocco State-Space
-% Kalman_observer, se non sono gia' presenti nei MAT caricati.
 ensureKalmanObserverInBase();
 
-% Copie locali delle variabili usate direttamente da questo script.
 ref    = getBaseVariable('ref');
 aero   = getBaseVariable('aero');
 act    = getBaseVariable('act');
@@ -75,15 +33,10 @@ sensor = getBaseVariable('sensor');
 alpha0 = getBaseVariable('alpha0');
 beta0  = getBaseVariable('beta0');
 
-% Modello linearizzato incerto e trim incerto.
-% Servono SOLO per costruire confronti LIN/NL closed-loop coerenti:
-% per ogni realizzazione parametrica delta, il ramo lineare viene valutato
-% sulla stessa realizzazione del ramo non lineare.
 P_uncertain_ext = getBaseVariable('P_uncertain_ext');
 u0_uncertain    = getBaseVariable('u0_uncertain');
 u0_nominal      = getBaseVariable('u0_nominal');
 
-% Verifica preventiva: meglio fermarsi qui che produrre una serie di errori Simulink.
 validateBaseWorkspaceForCampaign();
 
 %% ========================================================================
@@ -110,8 +63,6 @@ cfg.outputDir = fullfile(pwd,'simulink_result');
 cfg.saveSimulationMAT = false;
 cfg.showFigures = false;
 
-% Per figure da relazione si preferisce una simulazione deterministica.
-% Le prove stocastiche del Kalman possono essere abilitate separatamente.
 cfg.defaultSensorNoise = 0;
 cfg.defaultActuatorNoise = 0;
 
@@ -119,15 +70,11 @@ if ~exist(cfg.outputDir,'dir')
     mkdir(cfg.outputDir);
 end
 
-% Cancella solo i PNG/CSV della precedente campagna, non risultati MAT/RAS.
 cleanupPreviousCampaign(cfg.outputDir);
 
 %% ========================================================================
 % 2. NOMI DEI SEGNALI LOGGATI
 % =========================================================================
-% Modificare SOLO questa sezione se nel modello sono stati usati nomi diversi.
-%
-% Ogni elemento deve corrispondere al Signal name visibile in logsout.
 
 SIG.alphaRef = 'alpha_ref';
 SIG.betaRef  = 'beta_ref';
@@ -205,13 +152,8 @@ aeroStep.alpha.amplitude = 5e-3;   % [N m]
 aeroStep.beta.time       = 10;
 aeroStep.beta.amplitude  = 2e-3;   % [N m]
 
-% Se nel modello e' stato implementato aero.mode, questo valore e' innocuo
-% anche per le prove step. Se il campo non viene usato, Simulink lo ignora.
 aeroStep.mode = "step";
 
-% Campione parametrico volutamente severo ma interno all'iper-cubo [-1,1].
-% Ordine definito in fcn.m:
-% [J_alpha, J_y, J_z, m, l, epsilon_p, epsilon_y]
 deltaNominal = zeros(7,1);
 deltaRobustTest = [ ...
     +1.0; ... % J_alpha +10%
@@ -233,7 +175,6 @@ deltaRobustTest = [ ...
 EXP = repmat(emptyExperiment(),0,1);
 
 % ---- LQG / LQGI nominali -------------------------------------------------
-% Per il confronto LIN/NL corretto ogni plant deve chiudere il proprio loop.
 EXP(end+1) = makeExp('01_LQG_nominal_LIN', ...
     'LQG nominale - plant linearizzato', ...
     'LQG',1,2,1,refCombined,aeroOff,deltaNominal);
@@ -247,7 +188,6 @@ EXP(end+1) = makeExp('02_LQGI_nominal_NL', ...
     'LQG',2,1,1,refCombined,aeroOff,deltaNominal);
 
 % ---- Equivalenza LQG / H2 come problema di regolazione ------------------
-
 q0_H2equiv = [ ...
     alpha0 + deg2rad(1.0);
     beta0  - deg2rad(1.0)];
@@ -282,8 +222,6 @@ e.q0Override = q0_H2equiv;
 EXP(end+1) = e;
 
 % ---- Validazione progressiva LQG con rumori -----------------------------
-% Queste prove sono aggiuntive: le run nominali precedenti restano senza
-% rumore. I flag vengono letti singolarmente nella Sezione 7.
 
 % 1) Solo rumore di misura
 e = makeExp( ...
@@ -415,15 +353,6 @@ EXP(end+1) = e;
 % ========================================================================
 % Confronto H2 / Hinf in presenza di disturbi stocastici
 % ========================================================================
-%
-% Riferimento fisso all'equilibrio.
-% Nessuna coppia aerodinamica deterministica.
-% Rumore di attuazione + rumore di misura.
-% Stessi seed per tutti i controllori.
-%
-% H2 e LQG sono entrambi inseriti per verificare anche che l'equivalenza
-% osservata nella prova deterministica venga mantenuta sotto eccitazione
-% stocastica. Il confronto principale per la relazione sara' H2 vs mixsyn.
 
 % ---- LQG: sanity check --------------------------------------------------
 e = makeExp( ...
@@ -534,10 +463,6 @@ EXP(end+1) = makeExp('12_mu_uncertain_NL', ...
     'ROB',2,1,4,refCombined,aeroStep,deltaRobustTest);
 
 % ---- Validazione LIN/NL della STESSA realizzazione parametrica ------------
-% Queste prove NON sostituiscono gli stress test 11-13, che mantengono il
-% trim nominale e verificano la robustezza anche rispetto all'errore di trim.
-% Qui, invece, si usa u0(delta) sia sul LIN sia sul NL per isolare il confronto
-% tra il linearizzato della realizzazione incerta e il rispettivo non lineare.
 
 e = makeExp('V1_mixsyn_uncertain_matched_LIN', ...
     'mixsyn - realizzazione incerta matched - plant linearizzato', ...
@@ -566,10 +491,6 @@ EXP(end+1) = e;
 %% ========================================================================
 % 5. EVENTUALI PUNTI RAS AUTOMATICI
 % =========================================================================
-% Per mu-synthesis viene cercata una coppia adiacente rispetto alla mappa
-% numerica a orizzonte finito: un punto classificato interno e uno esterno.
-% La prova a 40 s verifica se il punto esterno e' realmente divergente o
-% semplicemente convergente piu' lentamente del criterio RAS a 15 s.
 
 rasInfoMu = findRASBoundaryPair('mu');
 
@@ -602,12 +523,10 @@ end
 
 load_system(cfg.model);
 
-% I segnali marcati "Log Selected Signals" confluiscono in logsout.
 set_param(cfg.model,'SignalLogging','on');
 set_param(cfg.model,'SignalLoggingName','logsout');
 set_param(cfg.model,'StopTime',num2str(cfg.stopTime));
 
-% Evita l'apertura automatica degli Scope durante una campagna batch.
 setScopeOpenState(cfg.model,'off');
 
 %% ========================================================================
@@ -646,22 +565,12 @@ for k = 1:numel(EXP)
 
     % --------------------------------------------------------------------
     % Realizzazione deterministica del modello linearizzato.
-    %
-    % Se plantId = 1 il blocco linearizzato deve rappresentare la STESSA
-    % realizzazione parametrica descritta da exp.deltaPlant. Nel caso
-    % nominale delta = 0 e si recupera esattamente P_nominal_ext.
-    %
-    % Per le prove "matched" viene inoltre usato sul plant non lineare il
-    % trim u0(delta) coerente con quella stessa realizzazione. Gli stress
-    % test originali 11-13 mantengono invece il trim nominale.
     % --------------------------------------------------------------------
     if exp.plantId == 1 || exp.matchedTrim
         [PextRun,u0Matched] = evaluatePlantRealizationAtNormalizedDelta( ...
             P_uncertain_ext,u0_uncertain,exp.deltaPlant);
 
         if exp.plantId == 1
-            % Il blocco State-Space linearizzato usa il nome P_nominal_ext.
-            % SimulationInput lo sovrascrive SOLO per questa singola run.
             in = in.setVariable('P_nominal_ext',PextRun);
         end
     else
@@ -674,25 +583,12 @@ for k = 1:numel(EXP)
         in = in.setVariable('u0',u0_nominal);
     end
 
-    % Simulazioni deterministiche per figure da relazione.
-    % actRun = act;
-    % sensorRun = sensor;
-    % % actRun.noiseEnable = cfg.defaultActuatorNoise;
-    % % sensorRun.noiseEnable = cfg.defaultSensorNoise;
-    % actRun.noiseEnable = exp.actuatorNoise;
-    % sensorRun.noiseEnable = exp.sensorNoise;
-    % 
-    % in = in.setVariable('act',actRun);
-    % in = in.setVariable('sensor',sensorRun);
-
     actRun = act;
     sensorRun = sensor;
 
     actRun.noiseEnable    = exp.actuatorNoise;
     sensorRun.noiseEnable = exp.sensorNoise;
 
-    % Seed eventualmente specifici per la singola prova.
-    % Se NaN rimangono i valori definiti in init.m.
     if isfinite(exp.actuatorSeed)
         actRun.seed = exp.actuatorSeed;
     end
@@ -703,9 +599,6 @@ for k = 1:numel(EXP)
 
     in = in.setVariable('act',actRun);
     in = in.setVariable('sensor',sensorRun);
-
-
-
 
     % Punto iniziale RAS, quando richiesto.
     if ~isempty(exp.q0Override)
@@ -727,16 +620,11 @@ for k = 1:numel(EXP)
 
     tic;
     try
-        % Durante sim() vengono soppressi temporaneamente i warning MATLAB/
-        % Simulink per mantenere leggibile la console. Gli errori continuano
-        % invece a propagarsi normalmente e vengono gestiti dal catch.
         out = simWithWarningsSuppressed(in);
         elapsed = toc;
         outputs{k} = out;
 
         logs = getLogsout(out);
-
-        % Produce i PNG equivalenti agli Scope pertinenti alla famiglia.
         makeRunPlots(logs,exp,SIG,expDir,cfg);
 
         if cfg.saveSimulationMAT
@@ -999,15 +887,6 @@ end
 
 % 8.8 Confronti LIN/NL closed-loop corretti
 % -------------------------------------------------------------------------
-% Ogni coppia seguente usa DUE simulazioni indipendenti:
-%   - nella run LIN il controllore chiude il loop sul plant linearizzato;
-%   - nella run NL  il controllore chiude il loop sul plant non lineare.
-%
-% In questo modo tracking, tracking error e differenza degli errori hanno
-% un significato closed-loop corretto. Le prove RAS sono volutamente escluse:
-% lontano dal punto di equilibrio il linearizzato non e' un modello adatto
-% per stimare la RAS del sistema non lineare.
-
 linNlDir = fullfile(cfg.outputDir,'linear_vs_nonlinear_closed_loop');
 if ~exist(linNlDir,'dir')
     mkdir(linNlDir);
@@ -1084,9 +963,6 @@ disp('============================================================');
 disp(summaryTable(:,1:4));
 fprintf('Risultati: %s\n',cfg.outputDir);
 
-% Ripristina apertura manuale degli Scope se desiderato.
-% setScopeOpenState(cfg.model,'on');
-
 %% ========================================================================
 % FUNZIONI LOCALI
 % =========================================================================
@@ -1127,12 +1003,8 @@ function E = makeExp(id,description,family,plantId,lqgId,robId,ref,aero,deltaPla
 end
 
 function [Pdet,u0det] = evaluatePlantRealizationAtNormalizedDelta(PuncExt,u0unc,delta)
-%EVALUATEPLANTREALIZATIONATNORMALIZEDDELTA
 % Valuta P_uncertain_ext e u0_uncertain sulla stessa realizzazione fisica
 % descritta dal vettore normalizzato delta in [-1,1].
-%
-% Ordine coerente con fcn.m e build_uncertain_linear_model.m:
-%   [J_alpha, J_y, J_z, m, l, epsilon_p, epsilon_y]
 
     names = { ...
         'J_alpha', ...
@@ -1380,22 +1252,10 @@ function makeRunPlots(logs,exp,SIG,outDir,cfg)
     catch ME
         warnMissing('disturbances',exp.id,ME);
     end
-
-    % NOTA:
-    % I segnali dei due plant simulati in parallelo nella stessa run non
-    % vengono piu' usati per il confronto ufficiale LIN/NL. Solo il plant
-    % selezionato chiude infatti il feedback. I confronti corretti vengono
-    % costruiti nella Sezione 8.8 usando due run closed-loop indipendenti.
-
 end
 
 function makeLinNlComparisonSet(outputs,EXP,ids,family,SIG,rootDir,cfg,stem,figTitle)
-%MAKELINNLCOMPARISONSET Genera confronti LIN/NL da due closed loop distinti.
-%
-% Produce:
-%   01_tracking_LIN_vs_NL.png
-%   02_tracking_error_LIN_vs_NL.png
-%   03_tracking_error_difference.png
+% Genera confronti LIN/NL da due closed loop distinti.
 
     pairDir = fullfile(rootDir,stem);
     if ~exist(pairDir,'dir')
@@ -1419,10 +1279,7 @@ function makeLinNlComparisonSet(outputs,EXP,ids,family,SIG,rootDir,cfg,stem,figT
 end
 
 function compareClosedLoopErrorGap(outputs,EXP,ids,family,SIG,outDir,cfg,fileName,figTitle)
-%COMPARECLOSEDLOOPERRORGAP Confronta e_NL - e_LIN.
-%
-% IMPORTANTE: ids{1} deve essere la run LIN e ids{2} la run NL.
-% Entrambe sono simulazioni closed-loop indipendenti.
+% Confronta e_NL - e_LIN.
 
     idx = indicesForIds(EXP,ids);
     if any(cellfun(@isempty,outputs(idx)))
@@ -1436,9 +1293,6 @@ function compareClosedLoopErrorGap(outputs,EXP,ids,family,SIG,outDir,cfg,fileNam
     [eaLin,ebLin] = errorSignals(logsLin,family,SIG);
     [eaNL, ebNL ] = errorSignals(logsNL, family,SIG);
 
-    % Interpolazione del LIN sulla griglia temporale del NL.
-    % Serve solo per sottrarre due timeseries che possono avere griglie
-    % diverse a causa del solver variable-step.
     eaLinI = interp1(eaLin.Time,eaLin.Data,eaNL.Time,'linear','extrap');
     ebLinI = interp1(ebLin.Time,ebLin.Data,ebNL.Time,'linear','extrap');
 
@@ -1705,25 +1559,8 @@ exportFigure( ...
     cfg);
 end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 function h = plotSemanticTrace(x,y,labelText,lineWidth)
-%PLOTSEMANTICTRACE Usa il colore globale quando labelText e' un controllore.
+% Usa il colore globale quando labelText e' un controllore.
     c = controller_plot_color(labelText);
     if isempty(c)
         h = plot(x,y,'LineWidth',lineWidth,'DisplayName',labelText);
@@ -1845,11 +1682,7 @@ function warnMissing(what,id,ME)
 end
 
 function runFirstExistingScriptInBase(names)
-%RUNFIRSTEXISTINGSCRIPTINBASE Esegue il primo script esistente nel Base WS.
-%
-% Il file viene letto con FILEREAD e valutato direttamente nel Base
-% Workspace. Questo evita sia il problema dei workspace locali sia
-% qualsiasi conflitto con un file chiamato run.m.
+% Esegue il primo script esistente nel Base WS.
 
     for k = 1:numel(names)
         scriptFile = char(names{k});
@@ -1872,7 +1705,7 @@ function runFirstExistingScriptInBase(names)
 end
 
 function ensureSimulationProfilesInBase()
-%ENSURESIMULATIONPROFILESINBASE Garantisce la presenza di ref e aero.
+% Garantisce la presenza di ref e aero.
 
     if ~evalin('base',"exist('alpha0','var')")
         error('alpha0 non esiste dopo l''inizializzazione.');
@@ -1964,14 +1797,7 @@ function value = getBaseVariable(name)
 end
 
 function ensureKalmanObserverInBase()
-%ENSUREKALMANOBSERVERINBASE Crea la realizzazione del Kalman observer.
-%
-% La realizzazione e' coerente con LQG_2DOF_Synthesis:
-%   Aobs = A - Ke*Cmeas
-%   Bobs = [B Ke]
-%   Cobs = I
-%   Dobs = 0
-%   xhat0 = 0
+% Crea la realizzazione del Kalman observer.
 
     observerVars = {'Aobs','Bobs','Cobs','Dobs','xhat0'};
     allPresent = true;
@@ -2021,7 +1847,7 @@ function ensureKalmanObserverInBase()
 end
 
 function validateBaseWorkspaceForCampaign()
-%VALIDATEBASEWORKSPACEFORCAMPAIGN Verifica le variabili essenziali.
+% Verifica le variabili essenziali.
 
     required = { ...
         'p0','act','sensor','ref','aero','alpha0','beta0', ...
@@ -2035,7 +1861,7 @@ function validateBaseWorkspaceForCampaign()
 
     for k = 1:numel(required)
         if ~evalin('base',sprintf("exist('%s','var')",required{k}))
-            missing{end+1} = required{k}; %#ok<AGROW>
+            missing{end+1} = required{k}; 
         end
     end
 
@@ -2050,14 +1876,10 @@ end
 
 
 function out = simWithWarningsSuppressed(in)
-%SIMWITHWARNINGSSUPPRESSED Esegue sim() senza affollare la console.
-%
-% I warning vengono disabilitati soltanto per la durata della chiamata a
-% sim(). Lo stato precedente viene sempre ripristinato, anche se Simulink
-% genera un errore. Gli errori non vengono soppressi.
+% Esegue sim() senza affollare la console.
 
     previousWarningState = warning;
-    cleanupObj = onCleanup(@() warning(previousWarningState)); %#ok<NASGU>
+    cleanupObj = onCleanup(@() warning(previousWarningState)); 
     warning('off','all');
 
     out = sim(in);
@@ -2177,8 +1999,6 @@ function info = findRASBoundaryPair(controllerPattern)
         return
     end
 
-    % Cerca una coppia 4-connessa stabile/instabile il piu' vicino possibile
-    % all'equilibrio (0,0), cosi' la prova non usa un punto estremo arbitrario.
     bestCost = inf;
     bestIn = [];
     bestOut = [];

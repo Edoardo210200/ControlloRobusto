@@ -1,29 +1,18 @@
-%% NOTE TEORICHE - FORMULAZIONE MIXED-SENSITIVITY H-INFINITY
-% Prepara il plant nominale/incerto, la normalizzazione e i pesi W_S, W_U e
-% W_T. Nel problema mixed-sensitivity si cerca un controllore che riduca la
-% norma H-infinity del vettore pesato [W_S*S; W_U*K*S; W_T*T], bilanciando
-% tracking/reiezione dei disturbi, sforzo di controllo e robustezza alle
-% alte frequenze. I valori numerici dei pesi restano quelli originali.
-%
+%% FORMULAZIONE MIXED-SENSITIVITY H-INFINITY
 
 %% HINF_SETUP
-%
 % Setup per il punto 2 - controllo H-infinity.
 %
 % Controllori:
-%
 %   1) mixsyn
 %   2) hinfsyn
 %   3) hinfstruct:
-%
 %        PID_alpha -> compensatore dinamico F_alpha(s)
 %        PID_beta  -> compensatore dinamico F_beta(s)
 %
 % Sintesi eseguita sul plant normalizzato:
-%
 %       y_bar = Dy^-1 y
 %       u     = Du u_bar
-%
 %       G_scaled = Dy^-1 G_nominal Du
 close all;
 clc;
@@ -85,7 +74,6 @@ Pq_nominal.OutputName = {
 
 %% ========================================================================
 % PLANT INCERTO COMPLETO
-%
 % Viene mantenuto per:
 %   - screening delle incertezze;
 %   - Monte Carlo finale;
@@ -104,7 +92,6 @@ Pq_uncertain_full.OutputName = {
 
 %% ========================================================================
 % PLANT INCERTO RIDOTTO
-%
 % Utilizzato per le analisi mu e la mu-synthesis.
 % ========================================================================
 Pq_uncertain = ...
@@ -135,7 +122,7 @@ Pq_uncertain.InputName = ...
     Pq_uncertain_full.InputName;
 Pq_uncertain.OutputName = ...
     Pq_uncertain_full.OutputName;
-% --------------------------------------------------
+
 Pq_uncertain.InputName = {
     'delta_F1'
     'delta_F2'
@@ -384,13 +371,10 @@ disp(dcgain(G_scaled));
 
 %% ========================================================================
 % 10. PESO WS
-%
 % Tuning definitivo:
 % - Ms moderatamente aumentato rispetto alla prima specifica;
 % - banda richiesta leggermente ridotta;
 % - WU = 0.75 I per utilizzare parte del margine sul comando.
-% Il compromesso porta gamma H-infinity sotto 1 mantenendo i requisiti
-% temporali nominali e una buona stabilita' robusta.
 % ========================================================================
 weight.Ms_alpha = 1.85;
 weight.Ms_beta  = 1.90;
@@ -419,7 +403,6 @@ WU = ss( ...
 
 %% ========================================================================
 % 12. PESO WT
-%
 % Spostato a frequenze maggiori per consentire
 % maggiore banda al controller.
 % ========================================================================

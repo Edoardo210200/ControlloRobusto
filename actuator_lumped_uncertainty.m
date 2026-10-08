@@ -1,17 +1,13 @@
-%% NOTE TEORICHE - INCERTEZZA MOLTIPLICATIVA CONCENTRATA
+%% INCERTEZZA MOLTIPLICATIVA CONCENTRATA
 % I campioni degli attuatori parametrici vengono ricoperti con un peso
 % dinamico W_I tale che l'errore relativo rispetto al modello nominale sia
 % rappresentabile come G = G_nom*(1 + W_I*Delta), ||Delta||_inf <= 1.
 % Questa forma e' adatta alla successiva analisi/sintesi mu.
-%
 
 %% ========================================================================
 % ACTUATOR_LUMPED_UNCERTAINTY
-%
 % Costruzione di un modello concentrato moltiplicativo degli attuatori:
-%
 % Gact_i_unc = Gact_i_nom * (1 + WI_i * Delta_i)
-%
 % da confrontare con il modello parametrico wn/td.
 % ========================================================================
 close all;

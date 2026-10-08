@@ -1,13 +1,7 @@
-%% NOTE TEORICHE - MU-SYNTHESIS E D-K ITERATION
-% La mu-synthesis cerca un controllore robusto rispetto alla struttura
-% esplicita delle incertezze. MUSYN implementa una D-K iteration alternando
-% sintesi H-infinity e scalature D che approssimano la structured singular
-% value mu. Il criterio e' direttamente collegato alla robust performance.
-%
+%% MU-SYNTHESIS E D-K ITERATION
 
 %% ========================================================================
 % MU_SYNTHESIS
-%
 % D-K iteration mediante MUSYN
 % ========================================================================
 close all;
@@ -75,12 +69,8 @@ SumE2 = ...
 
 %% ========================================================================
 % 4. GENERALIZED PLANT INCERTO
-%
 % ingressi  = [r1 r2 u1 u2]
 % uscite    = [zS zU zT e]
-%
-% Gli ultimi 2 ingressi sono i controlli.
-% Le ultime 2 uscite sono le misure al controllore.
 % ========================================================================
 P_mu = ...
     connect( ...

@@ -1,25 +1,15 @@
-%% NOTE TEORICHE - CONFRONTO H-INFINITY / MU
-% Confronta i controllori H-infinity e mu-synthesis sullo stesso modello
-% incerto. robstab fornisce margini di stabilita' robusta, wcgain stima il
-% worst-case gain e mussv calcola bounds della structured singular value.
-% Il confronto e' significativo solo mantenendo identici plant, pesi e
-% struttura di incertezza.
-%
+%% CONFRONTO H-INFINITY / MU
 
 %% ========================================================================
 % MU_ANALYSIS_COMPARISON
-%
 % Confronto H-infinity, mu-synthesis e H2 sullo STESSO modello incerto.
 %
 % Strategia:
-%
 % - robstab: analisi automatica robust stability
-%
 % - wcgain:
 %       1) prova prima il metodo standard, più veloce
 %       2) se compare l'errore "Invalid MU upper bound",
 %          ripete automaticamente usando MussvOptions = 'a'
-%
 % - mussv esplicita:
 %       analisi sulla griglia COMPLETA omegaHinf
 %
@@ -30,19 +20,16 @@ load('HINF_setup.mat');
 load('HINF_controllers.mat');
 load('ACTUATOR_LUMPED.mat');
 load('MU_controller.mat');
-load('H2_controller.mat');
 I2 = eye(2);
 controllers = {
     K_mix_scaled
     K_hinfsyn_scaled
     K_mu_scaled
-    K_h2_scaled
 };
 controllerNames = {
     'mixsyn'
     'hinfsyn'
     'mu-synthesis'
-    'H2'
 };
 Nc = numel(controllers);
 
@@ -150,19 +137,11 @@ for k = 1:Nc
 
     %% ====================================================================
     % ROBUST PERFORMANCE - WCGAIN
-    %
     % Prima viene provato wcgain standard.
-    %
     % Se il metodo standard genera:
-    %
     % "Invalid MU upper bound"
-    %
     % viene effettuato automaticamente un secondo tentativo con
     % MussvOptions = 'a'.
-    %
-    % IMPORTANTE:
-    % wcgain viene lasciato lavorare direttamente sul modello USS,
-    % senza forzarlo sulla griglia omegaHinf.
     % =====================================================================
     fprintf('Running wcgain (standard method)...\n');
     tic;
@@ -194,8 +173,6 @@ for k = 1:Nc
                     wcOptsAccurate);
             fprintf('wcgain accurate method successful.\n');
         else
-            % Se l'errore NON è quello dell'upper bound di mu,
-            % non viene nascosto.
             rethrow(ME);
         end
     end
@@ -218,15 +195,10 @@ for k = 1:Nc
 
     %% ====================================================================
     % ROBUST STABILITY VIA MU ESPLICITA
-    %
     % Costruzione del blocco M11 associato all'incertezza fisica.
-    %
     % Se:
-    %
     % Delta : nDeltaOut x nDeltaIn
-    %
     % allora:
-    %
     % M11 : nDeltaIn x nDeltaOut
     % =====================================================================
     szDelta = size(Delta);
@@ -259,13 +231,10 @@ for k = 1:Nc
 
     %% ====================================================================
     % ROBUST PERFORMANCE VIA MU ESPLICITA
-    %
     % Delta_aug =
     %
     %       [ Delta       0      ]
     %       [   0     DeltaPerf  ]
-    %
-    %
     % DeltaPerf rappresenta il blocco prestazionale fittizio.
     % =====================================================================
     nExogenous = ...
@@ -295,7 +264,6 @@ for k = 1:Nc
 
     %% ====================================================================
     % MU ROBUST PERFORMANCE
-    %
     % Analisi sulla griglia COMPLETA omegaHinf.
     % =====================================================================
     fprintf( ...

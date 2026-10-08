@@ -1,20 +1,13 @@
 %% MU_RP_FREQUENCY_DIAGNOSTIC
-%
 % Diagnostica in frequenza della robust performance del controllore
 % ottenuto mediante D-K iteration.
-%
 % Obiettivi:
 % 1) visualizzare mu_RP lower/upper bound;
-% 2) individuare le bande nelle quali mu_RP > 1;
 % 3) individuare la frequenza del massimo;
 % 4) confrontare tale zona con i tre canali pesati nominali:
-%
 %       WS*S
 %       WU*K*S
 %       WT*T
-%
-% Le curve dei canali pesati sono utilizzate come supporto al tuning
-% dei pesi, NON come decomposizione esatta della structured singular value.
 
 close all;
 clc;

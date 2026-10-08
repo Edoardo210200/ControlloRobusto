@@ -4,7 +4,7 @@
 close all;
 clc;
 
-%% 1. Eseguo la sintesi LQG gia' validata
+%% 1. Eseguiamo la sintesi LQG gia' validata
 run('LQG_2DOF_Synthesis.m');
 
 requiredVars = { ...
@@ -51,7 +51,6 @@ Whalf = chol(W,'lower');
 Vhalf = chol(V,'lower');
 
 %% 3. Generalized plant H2
-
 % Ingressi esogeni:
 % eta = [eta_w ; eta_v]
 %
@@ -110,10 +109,7 @@ fprintf('Ordine K_H2_y = %d\n',order(K_H2_y));
 fprintf('||Tzw||_2 H2  = %.10g\n',gamma_H2);
 fprintf('Stabile        = %d\n',isstable(CL_H2));
 
-%% 5. Valuto LQG sullo stesso identico generalized plant
-
-% K_LQG ha ingressi [r ; y_m].
-% Nel problema di regolazione estraggo solamente y_m -> u.
+%% 5. Valutiamo LQG sullo stesso identico generalized plant
 
 K_LQG_y = ...
     K_LQG(:,nr+(1:ny));
@@ -149,7 +145,6 @@ else
 end
 
 %% 6. Stessa interfaccia del controllore LQG per il tracking
-%
 % u = Nbar*r + K_H2_y*y_m
 
 Kref = ss([],[],[],Nbar);

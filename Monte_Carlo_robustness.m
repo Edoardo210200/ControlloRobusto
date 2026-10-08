@@ -1,13 +1,9 @@
-%% NOTE TEORICHE - VALIDAZIONE MONTE CARLO
+%% VALIDAZIONE MONTE CARLO
 % Campiona plant appartenenti alla famiglia incerta e valuta stabilita',
-% tracking, banda, accoppiamento e reiezione dei disturbi. Il Monte Carlo
-% non sostituisce una certificazione mu/worst-case, ma fornisce una verifica
-% numerica complementare e intuitiva delle prestazioni robuste.
-%
+% tracking, banda, accoppiamento e reiezione dei disturbi.
 
 %% ========================================================================
 % MONTE_CARLO_ROBUSTNESS
-%
 % Punto 5 della traccia.
 % 10 plant parametrici incerti:
 %   - stabilita'
@@ -20,7 +16,6 @@ clc;
 load('HINF_setup.mat');
 load('HINF_controllers.mat');
 load('MU_controller.mat');
-load('H2_controller.mat');
 assert(exist('Gd_uncertain','var') == 1, ...
     'Gd_uncertain deve essere disponibile dal modello lineare esteso.');
 I2 = eye(2);
@@ -29,14 +24,12 @@ controllers = {
     K_hinfsyn
     K_pidcomp
     K_mu
-    K_h2
 };
 controllerNames = {
     'mixsyn'
     'hinfsyn'
     'PID+comp'
     'mu-synthesis'
-    'H2'
 };
 Nc = numel(controllers);
 nSamples = 10;
@@ -228,8 +221,7 @@ writetable( ...
 % FUNZIONE LOCALE - SETTLING TIME ROBUSTO
 % ========================================================================
 function [ts,settled] = settlingTimeFromTrace(t,y,yss,threshold)
-%SETTLINGTIMEFROMTRACE Determina il primo istante dopo l'ultima uscita banda.
-%
+% Determina il primo istante dopo l'ultima uscita banda.
 % La banda e' +/- threshold*|yss|. Per riferimenti quasi nulli viene usata
 % una piccola scala assoluta per evitare una banda numericamente nulla.
 

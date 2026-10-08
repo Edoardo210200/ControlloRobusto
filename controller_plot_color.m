@@ -1,14 +1,5 @@
 function color = controller_plot_color(name)
 %CONTROLLER_PLOT_COLOR Colore globale coerente per ciascun controllore.
-%
-% Questa funzione centralizza la palette usata in tutti i grafici di
-% confronto del progetto. In questo modo lo stesso controllore mantiene
-% sempre lo stesso colore indipendentemente dall'ordine con cui viene
-% rappresentato nella figura.
-%
-% Restituisce [] per etichette che non identificano un controllore
-% (ad esempio "Linearizzato" o "Interno al criterio"), lasciando in quel
-% caso a MATLAB la scelta del colore.
 
     key = lower(regexprep(char(string(name)),'[^a-zA-Z0-9]',''));
 

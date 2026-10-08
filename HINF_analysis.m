@@ -1,22 +1,16 @@
-%% NOTE TEORICHE - VERIFICA NOMINALE E ROBUSTA DEI CONTROLLORI
+%% VERIFICA NOMINALE E ROBUSTA DEI CONTROLLORI
 % Valuta per ciascun controllore stabilita' nominale (NS), prestazione
 % nominale (NP), stabilita' robusta (RS) e prestazione robusta (RP), oltre
-% alle funzioni S, KS e T e alle metriche temporali. Le analisi mu/worst
-% case quantificano il comportamento rispetto alla struttura di incertezza
-% invece di limitarsi al solo modello nominale.
-%
+% alle funzioni S, KS e T e alle metriche temporali.
 
 %% HINF_ANALYSIS
-%
-% Analisi comparativa completa (H-infinity, PID strutturato e H2):
-%
+% Analisi comparativa completa (mixsyn, hinfsyn e PID strutturato):
 % NS - Nominal Stability
 % NP - Nominal Performance
 % RS - Robust Stability
 % RP - Robust Performance
 %
 % + time-domain metrics:
-%
 % Rise Time
 % Settling Time
 % Overshoot
@@ -24,25 +18,16 @@ close all;
 clc;
 load('HINF_setup.mat');
 load('HINF_controllers.mat');
-load('H2_controller.mat');
 I2 = eye(2);
 
 %% ========================================================================
 % OPZIONI WCGAIN
-%
 % Strategia:
-%
 % 1) si prova prima il metodo standard;
-%
-% 2) SOLO se compare l'errore
-%
+% 2) solo se compare l'errore
 %       "Invalid MU upper bound"
-%
 %    si ripete il calcolo utilizzando
-%
 %       MussvOptions = 'a'
-%
-% in modo analogo a MU_analysis_comparison.m.
 % ========================================================================
 wcOptsFast = wcOptions;
 wcOptsAccurate = ...
@@ -55,27 +40,19 @@ controllersScaled = {
     K_mix_scaled
     K_hinfsyn_scaled
     K_pidcomp_scaled
-    K_h2_scaled
 };
 controllersPhysical = {
     K_mix
     K_hinfsyn
     K_pidcomp
-    K_h2
 };
 controllerNames = {
     'mixsyn'
     'hinfsyn'
     'PID + compensator'
-    'H2'
 };
 nControllers = ...
     numel(controllersScaled);
-% Ridimensiona le celle dipendenti dal numero di controllori dopo
-% l'aggiunta del controllore H2.
-wcuRS_all = cell(nControllers,1);
-wcuRP_all = cell(nControllers,1);
-robSensitivity_all = cell(nControllers,1);
 
 %% ========================================================================
 % 2. PREALLOCAZIONE
@@ -308,19 +285,12 @@ for k = 1:nControllers
 
     %% ====================================================================
     % 3.6 RP - ROBUST PERFORMANCE VIA WCGAIN
-    %
     % Strategia:
-    %
     % 1) tentativo standard, piu' veloce;
-    %
     % 2) se MATLAB restituisce l'errore
-    %
     %       "Invalid MU upper bound"
-    %
     %    viene ripetuto automaticamente wcgain con
-    %
     %       MussvOptions = 'a'
-    %
     % 3) robgain viene utilizzato come verifica indipendente
     %    del requisito ||Tzw||_inf < 1 per ogni incertezza.
     % =====================================================================
@@ -369,8 +339,6 @@ for k = 1:nControllers
                     wcOptsAccurate);
             fprintf('wcgain fallback method successful.\n');
         else
-            % Se l'errore non e' quello associato all'upper bound di mu,
-            % non viene nascosto.
             rethrow(ME);
         end
     end
@@ -390,7 +358,6 @@ for k = 1:nControllers
 
     %% --------------------------------------------------------------------
     % TEST ROBUST PERFORMANCE
-    %
     % RP garantita se il WORST-CASE gain e' < 1.
     % Per sicurezza utilizziamo l'upper bound.
     % ---------------------------------------------------------------------
@@ -403,11 +370,8 @@ for k = 1:nControllers
 
     %% --------------------------------------------------------------------
     % VERIFICA INDIPENDENTE CON ROBGAIN
-    %
     % robgain(...,1) verifica la prestazione:
-    %
     %       ||WeightedUncertainCL||_inf < 1
-    %
     % per tutta la famiglia incerta.
     % ---------------------------------------------------------------------
     [performanceMargin,wcuRobGain,infoRobGain] = ...
@@ -468,7 +432,6 @@ for k = 1:nControllers
         1);
     % --- FIX PER L'ERRORE VERTCAT CON LA STRUCT ---
     BlockStructureRP = BlockStructure;
-    % Clona il primo blocco per mantenere i campi interni di MATLAB allineati
     perfBlock = BlockStructureRP(1);
     perfBlock.Name = 'Performance';
     perfBlock.Type = 'ucomplexm';
@@ -483,7 +446,6 @@ for k = 1:nControllers
         Mdelta, ...
         omegaHinf), ...
         BlockStructureRP);
-    % --- QUESTA PARTE SOTTO RIMANE IDENTICA ALL'ORIGINALE ---
     muRPupper = ...
         squeeze( ...
         muRPbounds.ResponseData(1,1,:));
@@ -679,11 +641,6 @@ legend( ...
 %% ========================================================================
 % 7. SENSITIVITY PLOTS
 % =========================================================================
-% Ogni controllore usa SEMPRE il proprio colore globale. Le due curve dei
-% valori singolari dello stesso sistema condividono il colore e vengono
-% differenziate con linea continua/tratteggiata. In questo modo il numero
-% di curve non fa mai riciclare la ColorOrder di MATLAB e la legenda resta
-% semanticamente corretta.
 
 figure('Name','Controller comparison - Sensitivity function');
 hold on; grid on;
@@ -771,10 +728,6 @@ end
 %% ========================================================================
 % 9. CONTROL EFFORT
 % =========================================================================
-% I due attuatori vengono mostrati in pannelli distinti. In precedenza
-% quattro controllori x due attuatori producevano otto curve nello stesso
-% axes e MATLAB riciclava la ColorOrder, assegnando lo stesso colore a
-% tracce semanticamente diverse.
 figure('Name','Controller comparison - Control effort for pitch reference');
 tl = tiledlayout(2,1,'TileSpacing','compact','Padding','compact');
 
@@ -914,7 +867,7 @@ save( ...
 % FUNZIONE
 % ========================================================================
 function plotSigmaController(sys,omega,name)
-%PLOTSIGMACONTROLLER Valori singolari con colore fisso per controllore.
+% Valori singolari con colore fisso per controllore.
     sv = sigma(sys,omega);
     sv = squeeze(sv);
     if isvector(sv)
@@ -931,16 +884,16 @@ function plotSigmaController(sys,omega,name)
             'LineWidth',1.25, ...
             'LineStyle',styles{1+mod(isv-1,numel(styles))}};
         if isv == 1
-            args = [args,{'DisplayName',name}]; %#ok<AGROW>
+            args = [args,{'DisplayName',name}]; 
         else
-            args = [args,{'HandleVisibility','off'}]; %#ok<AGROW>
+            args = [args,{'HandleVisibility','off'}]; 
         end
         semilogx(omega,20*log10(max(sv(isv,:),realmin)),args{:});
     end
 end
 
 function plotSigmaBound(sys,omega,labelText)
-%PLOTSIGMABOUND Limite prestazionale in nero, senza duplicare la legenda.
+% Limite prestazionale in nero, senza duplicare la legenda.
     sv = sigma(sys,omega);
     sv = squeeze(sv);
     if isvector(sv)
@@ -956,9 +909,9 @@ function plotSigmaBound(sys,omega,labelText)
             'LineWidth',1.1, ...
             'LineStyle',styles{1+mod(isv-1,numel(styles))}};
         if isv == 1
-            args = [args,{'DisplayName',labelText}]; %#ok<AGROW>
+            args = [args,{'DisplayName',labelText}];
         else
-            args = [args,{'HandleVisibility','off'}]; %#ok<AGROW>
+            args = [args,{'HandleVisibility','off'}]; 
         end
         semilogx(omega,20*log10(max(sv(isv,:),realmin)),args{:});
     end
